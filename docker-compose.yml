@@ -1,0 +1,14 @@
+services:
+  weather-bot:
+    build: .
+    container_name: weather-vk-bot
+    restart: unless-stopped
+    environment:
+      - TZ=Europe/Moscow
+    env_file:
+      - .env
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
