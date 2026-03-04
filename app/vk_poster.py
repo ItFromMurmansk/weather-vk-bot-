@@ -1,5 +1,6 @@
 from vkbottle import API
-from vkbottle.exception import VKAPIError
+from vkbottle.api import API
+from vkbottle.exception_factory import VKAPIError
 from .config import Config
 from datetime import datetime
 
@@ -34,7 +35,7 @@ class VKPoster:
             return True
             
         except VKAPIError as e:
-            print(f"❌ Ошибка VK API: {e}")
+            print(f"❌ Ошибка VK API [код {e.code}]: {e}")
             if e.code == 15:
                 print("   ❗ Нет прав на публикацию. Проверьте токен и права доступа")
             elif e.code == 214:

@@ -1,6 +1,7 @@
 aiohttp==3.9.1
 python-dotenv==1.0.0
-vkbottle==3.0.2
+vkbottle==3.0.3
 requests==2.31.0
 pytz==2023.3
 schedule==1.2.0
+pydantic==1.10.13
