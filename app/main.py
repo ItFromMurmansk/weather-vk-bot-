@@ -1,12 +1,10 @@
 import asyncio
 import schedule
-import time
-from datetime import datetime
+from datetime import datetime, time
 import pytz
 import sys
 import os
 
-# Добавляем путь к модулям
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from .config import Config
@@ -27,10 +25,10 @@ class WeatherBot:
         
     async def post_weather(self):
         """
-        Получает погоду и публикует пост
+        Получает погоду и обновляет пост
         """
         current_time = self._get_current_time()
-        print(f"\n🔄 Запуск публикации в {current_time}")
+        print(f"\n🔄 Обновление погоды в {current_time}")
         
         # Получаем погоду
         weather_data = self.weather_service.get_weather()
@@ -48,33 +46,45 @@ class WeatherBot:
         print(message)
         print("-" * 40)
         
-        # Публикуем пост
-        success = await self.vk_poster.post_to_wall(message)
+        # Обновляем пост
+        success = await self.vk_poster.update_post(message)
         
         if success:
-            print("✅ Публикация завершена успешно")
+            print("✅ Пост успешно обновлен")
         else:
-            print("❌ Ошибка при публикации")
+            print("❌ Ошибка при обновлении поста")
     
     def _get_current_time(self):
         """Возвращает текущее время в часовом поясе бота"""
         return datetime.now(self.timezone).strftime("%Y-%m-%d %H:%M:%S")
     
+    def should_run_now(self) -> bool:
+        """
+        Проверяет, нужно ли запускать обновление в текущее время
+        (с 8:00 до 21:00 каждый час)
+        """
+        now = datetime.now(self.timezone)
+        current_hour = now.hour
+        
+        # Проверяем, что время между 8:00 и 21:00
+        return 8 <= current_hour <= 21
+    
     def schedule_jobs(self):
         """Настраивает расписание публикаций"""
-        post_time = self.config.POST_TIME
         
-        # Планируем ежедневную публикацию
-        schedule.every().day.at(post_time).do(
-            lambda: asyncio.create_task(self.post_weather())
-        )
+        # Запускаем каждый час с 8:00 до 21:00
+        for hour in range(8, 22):  # 8:00, 9:00, ... 21:00
+            schedule.every().day.at(f"{hour:02d}:00").do(
+                lambda: asyncio.create_task(self.post_weather())
+            )
         
-        print(f"📅 Бот запущен. Публикация запланирована ежедневно в {post_time} ({self.config.TIMEZONE})")
+        print(f"📅 Бот запущен. Обновление поста каждый час с 8:00 до 21:00")
+        print(f"🕐 Текущее время: {datetime.now(self.timezone).strftime('%H:%M')}")
         
     async def run(self):
         """Запускает бота"""
         print("\n" + "="*50)
-        print("🚀 ЗАПУСК БОТА ПОГОДЫ ДЛЯ ВКОНТАКТЕ")
+        print("🚀 ЗАПУСК БОТА ПОГОДЫ ДЛЯ ВКОНТАКТЕ (HOURLY MODE)")
         print("="*50)
         print(f"📍 Координаты СНТ: {self.config.LAT}, {self.config.LON}")
         print(f"🌍 Часовой пояс: {self.config.TIMEZONE}")
@@ -83,11 +93,14 @@ class WeatherBot:
         # Настраиваем расписание
         self.schedule_jobs()
         
-        # Выполняем немедленную публикацию при запуске (для теста)
-        print("📢 Тестовая публикация при запуске:")
-        await self.post_weather()
+        # Если сейчас время между 8 и 21 - делаем немедленное обновление
+        if self.should_run_now():
+            print("📢 Первое обновление сейчас:")
+            await self.post_weather()
+        else:
+            print(f"⏳ Сейчас {datetime.now(self.timezone).strftime('%H:%M')} - ожидание 8:00...")
         
-        print("\n⏳ Ожидание следующего запланированного запуска...")
+        print("\n⏳ Ожидание следующего обновления...")
         print("🔍 Для остановки нажмите Ctrl+C\n")
         
         # Бесконечный цикл проверки расписания

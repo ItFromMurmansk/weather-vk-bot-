@@ -15,18 +15,14 @@ class WeatherService:
     def get_weather(self) -> Optional[Dict[str, Any]]:
         """
         Получает текущую погоду по координатам СНТ
-        
-        Returns:
-            Dict с данными о погоде или None в случае ошибки
         """
         try:
-            # Параметры запроса к OpenWeatherMap
             params = {
                 'lat': self.lat,
                 'lon': self.lon,
                 'appid': self.api_key,
-                'units': 'metric',  # Температура в Цельсиях
-                'lang': 'ru'         # Описание на русском
+                'units': 'metric',
+                'lang': 'ru'
             }
             
             print(f"🌤 Запрос погоды для координат: {self.lat}, {self.lon}")
@@ -36,12 +32,22 @@ class WeatherService:
             data = response.json()
             return self._parse_weather_data(data)
             
-        except requests.exceptions.RequestException as e:
-            print(f"❌ Ошибка при запросе к API погоды: {e}")
-            return None
         except Exception as e:
-            print(f"❌ Неожиданная ошибка: {e}")
+            print(f"❌ Ошибка при получении погоды: {e}")
             return None
+    
+    def _get_greeting(self) -> str:
+        """
+        Возвращает приветствие в зависимости от времени суток
+        """
+        current_hour = datetime.now().hour
+        
+        if 5 <= current_hour < 12:
+            return "Доброе утро"
+        elif 12 <= current_hour < 18:
+            return "Добрый день"
+        else:
+            return "Добрый вечер"
     
     def _parse_weather_data(self, data: Dict) -> Dict[str, Any]:
         """
@@ -57,20 +63,18 @@ class WeatherService:
         temp = main.get('temp', 0)
         wind_speed = wind.get('speed', 0)
         
-        # Ощущаемая температура с учетом ветра (формула для холодной погоды)
+        # Ощущаемая температура с учетом ветра
         if temp < 10 and wind_speed > 1.5:
-            # Ветро-холодовой индекс
             feels_like = 13.12 + 0.6215 * temp - 11.37 * (wind_speed ** 0.16) + 0.3965 * temp * (wind_speed ** 0.16)
         else:
             feels_like = main.get('feels_like', temp)
         
-        # Код погоды для эмодзи
         weather_id = weather.get('id', 800)
         
         return {
             'temperature': round(temp, 1),
             'feels_like': round(feels_like, 1),
-            'pressure': round(main.get('pressure', 0) * 0.750062),  # гПа -> мм рт. ст.
+            'pressure': round(main.get('pressure', 0) * 0.750062),
             'humidity': main.get('humidity', 0),
             'wind_speed': round(wind_speed, 1),
             'wind_direction': self._get_wind_direction(wind.get('deg', 0)),
@@ -79,29 +83,30 @@ class WeatherService:
             'clouds': data.get('clouds', {}).get('all', 0),
             'sunrise': datetime.fromtimestamp(sys.get('sunrise', 0)).strftime('%H:%M'),
             'sunset': datetime.fromtimestamp(sys.get('sunset', 0)).strftime('%H:%M'),
-            'city': data.get('name', 'СНТ')
+            'greeting': self._get_greeting(),
+            'current_time': datetime.now().strftime('%H:%M')
         }
     
     def _get_weather_emoji(self, weather_id: int) -> str:
         """Возвращает эмодзи в зависимости от кода погоды"""
         if weather_id == 800:
-            return "☀️"  # Ясно
+            return "☀️"
         elif 801 <= weather_id <= 802:
-            return "🌤️"  # Малооблачно
+            return "🌤️"
         elif 803 <= weather_id <= 804:
-            return "☁️"  # Облачно
+            return "☁️"
         elif 700 <= weather_id < 800:
-            return "🌫️"  # Туман
+            return "🌫️"
         elif 600 <= weather_id < 700:
-            return "🌨️"  # Снег
+            return "🌨️"
         elif 500 <= weather_id < 600:
-            return "🌧️"  # Дождь
+            return "🌧️"
         elif 300 <= weather_id < 400:
-            return "🌦️"  # Морось
+            return "🌦️"
         elif 200 <= weather_id < 300:
-            return "⛈️"  # Гроза
+            return "⛈️"
         else:
-            return "🌡️"  # Термометр для непонятной погоды
+            return "🌡️"
     
     def _get_wind_direction(self, degrees: float) -> str:
         """Преобразует градусы ветра в текстовое направление"""
@@ -135,9 +140,9 @@ class WeatherService:
         
         # Формируем сообщение
         message = f"""
-{weather_data['emoji']} **Доброе утро, садоводы!**
+{weather_data['emoji']} **{weather_data['greeting']}, садоводы!**
 
-Погода в нашем СНТ на сегодня:
+Погода в нашем СНТ на {weather_data['current_time']}:
 
 🌡 **Температура:** {weather_data['temperature']}°C
 👕 **Ощущается как:** {weather_data['feels_like']}°C
@@ -152,6 +157,6 @@ class WeatherService:
 🌅 **Рассвет:** {weather_data['sunrise']}
 🌇 **Закат:** {weather_data['sunset']}
 
-🍃 Хорошего дня и отличного настроения! 🌿
+🍃 Хорошего дня! Обновление каждый час с 8:00 до 21:00 🌿
 """
         return message.strip()
